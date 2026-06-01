@@ -1,8 +1,8 @@
 import React from "react";
-import { Route , Routes} from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
-import InterviewPage from "./pages/InterviewPage"
+import InterviewPage from "./pages/InterviewPage";
 import InterviewHistory from "./pages/InterviewHistory";
 import InterviewReport from "./pages/InterviewReport";
 import Pricing from "./pages/Pricing";
@@ -11,9 +11,10 @@ import axios from "axios";
 import { useDispatch } from "react-redux";
 import { setUserData } from "./redux/userSlice";
 
-export const ServerUrl = "http://localhost:8080";
+export const ServerUrl =
+  import.meta.env.VITE_SERVER_URL || "http://localhost:8080";
 
-function App(){
+function App() {
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -35,14 +36,14 @@ function App(){
 
   return (
     <Routes>
-      <Route path="/" element = {<Home/>}/>
-      <Route path="/auth" element ={<Auth/>}/>
+      <Route path="/" element={<Home />} />
+      <Route path="/auth" element={<Auth />} />
       <Route path="/interview" element={<InterviewPage />} />
       <Route path="/history" element={<InterviewHistory />} />
       <Route path="/report/:id" element={<InterviewReport />} />
       <Route path="/pricing" element={<Pricing />} />
     </Routes>
-  )
+  );
 }
 
-export default App
+export default App;

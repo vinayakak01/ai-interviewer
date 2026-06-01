@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import Payment from "../models/payment.model.js";
 import User from "../models/user.model.js";
-import razorpay from "../services/razorpay.service.js";
+import getRazorpayClient from "../services/razorpay.service.js";
 
 const plans = {
   basic: {
@@ -16,6 +16,7 @@ const plans = {
 
 export const createOrder = async (req, res) => {
   try {
+    const razorpay = getRazorpayClient();
     const { planId } = req.body;
     const plan = plans[planId];
 

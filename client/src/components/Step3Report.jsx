@@ -1,7 +1,128 @@
 import React from "react";
-import { motion } from "motion/react";
 import { FaArrowLeft } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import { motion } from "motion/react";
+import { buildStyles, CircularProgressbar } from "react-circular-progressbar";
+import "react-circular-progressbar/dist/styles.css";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
+function PerformanceTrendChart({ data }) {
+  if (!data.length) {
+    return (
+      <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-gray-200 text-sm text-gray-400">
+        No question scores available yet.
+      </div>
+    );
+  }
+
+  const width = 760;
+  const height = 280;
+  const padding = 28;
+  const innerWidth = width - padding * 2;
+  const innerHeight = height - padding * 2;
+  const maxScore = 10;
+  const minScore = 0;
+
+  const points = data.map((item, index) => {
+    const x =
+      data.length === 1
+        ? width / 2
+        : padding + (index / (data.length - 1)) * innerWidth;
+    const y =
+      padding +
+      ((maxScore - item.score) / (maxScore - minScore || 1)) * innerHeight;
+
+    return { ...item, x, y };
+  });
+
+  const linePath = points
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
+    .join(" ");
+
+  const areaPath = `${linePath} L ${points[points.length - 1].x} ${
+    height - padding
+  } L ${points[0].x} ${height - padding} Z`;
+
+  const gridValues = [0, 2.5, 5, 7.5, 10];
+
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      className="h-full w-full"
+      role="img"
+      aria-label="Performance trend graph"
+    >
+      <defs>
+        <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#86efac" stopOpacity="0.55" />
+          <stop offset="100%" stopColor="#dcfce7" stopOpacity="0.12" />
+        </linearGradient>
+      </defs>
+
+      {gridValues.map((value) => {
+        const y =
+          padding + ((maxScore - value) / (maxScore - minScore)) * innerHeight;
+
+        return (
+          <g key={value}>
+            <line
+              x1={padding}
+              y1={y}
+              x2={width - padding}
+              y2={y}
+              stroke="#e5e7eb"
+              strokeDasharray="4 6"
+            />
+            <text
+              x={8}
+              y={y + 4}
+              fontSize="12"
+              fill="#94a3b8"
+            >
+              {value}
+            </text>
+          </g>
+        );
+      })}
+
+      <path d={areaPath} fill="url(#trendFill)" />
+      <path
+        d={linePath}
+        fill="none"
+        stroke="#10b981"
+        strokeWidth="4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      {points.map((point) => (
+        <g key={point.name}>
+          <circle cx={point.x} cy={point.y} r="6" fill="#10b981" />
+          <circle cx={point.x} cy={point.y} r="12" fill="#10b981" fillOpacity="0.12" />
+          <text
+            x={point.x}
+            y={height - 8}
+            textAnchor="middle"
+            fontSize="12"
+            fill="#64748b"
+          >
+            {point.name}
+          </text>
+          <text
+            x={point.x}
+            y={point.y - 14}
+            textAnchor="middle"
+            fontSize="12"
+            fill="#0f172a"
+          >
+            {point.score}
+          </text>
+        </g>
+      ))}
+    </svg>
+  );
+}
 
 function Step3Report({ report }) {
   const navigate = useNavigate();
@@ -22,14 +143,19 @@ function Step3Report({ report }) {
     questionWiseScore = [],
   } = report;
 
+  const questionScoreData = questionWiseScore.map((score, index) => ({
+    name: `Q${index + 1}`,
+    score: score.score || 0,
+  }));
+
   const skills = [
     { label: "Confidence", value: confidence },
     { label: "Communication", value: communication },
     { label: "Correctness", value: correctness },
   ];
 
-  let performanceText = "Significant improvement required.";
-  let shortTagline = "Work on clarity, structure, and confidence.";
+  let performanceText = "";
+  let shortTagline = "";
 
   if (finalScore >= 8) {
     performanceText = "Ready for job opportunities.";
@@ -37,14 +163,124 @@ function Step3Report({ report }) {
   } else if (finalScore >= 5) {
     performanceText = "Needs minor improvement before interviews.";
     shortTagline = "Good foundation, refine articulation.";
+  } else {
+    performanceText = "Significant improvement required.";
+    shortTagline = "Work on clarity and confidence.";
   }
 
-  const percentage = Math.max(0, Math.min(100, (finalScore / 10) * 100));
+  const score = finalScore;
+  const percentage = (score / 10) * 100;
+
+  const downloadPDF = () => {
+    const doc = new jsPDF("p", "mm", "a4");
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    const contentWidth = pageWidth - margin * 2;
+
+    let currentY = 25;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.setTextColor(34, 197, 94);
+    doc.text("AI Interview Performance Report", pageWidth / 2, currentY, {
+      align: "center",
+    });
+
+    currentY += 5;
+
+    doc.setDrawColor(34, 197, 94);
+    doc.line(margin, currentY + 2, pageWidth - margin, currentY + 2);
+
+    currentY += 15;
+
+    doc.setFillColor(240, 253, 244);
+    doc.roundedRect(margin, currentY, contentWidth, 20, 4, 4, "F");
+
+    doc.setFontSize(14);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Final Score: ${finalScore}/10`, pageWidth / 2, currentY + 12, {
+      align: "center",
+    });
+
+    currentY += 30;
+
+    doc.setFillColor(249, 250, 251);
+    doc.roundedRect(margin, currentY, contentWidth, 30, 4, 4, "F");
+
+    doc.setFontSize(12);
+    doc.text(`Confidence: ${confidence}`, margin + 10, currentY + 10);
+    doc.text(`Communication: ${communication}`, margin + 10, currentY + 18);
+    doc.text(`Correctness: ${correctness}`, margin + 10, currentY + 26);
+
+    currentY += 45;
+
+    let advice = "";
+
+    if (finalScore >= 8) {
+      advice =
+        "Excellent performance. Maintain confidence and structure. Continue refining clarity and supporting answers with strong real-world examples.";
+    } else if (finalScore >= 5) {
+      advice =
+        "Good foundation shown. Improve clarity and structure. Practice delivering concise, confident answers with stronger supporting examples.";
+    } else {
+      advice =
+        "Significant improvement required. Focus on structured thinking, clarity, and confident delivery. Practice answering aloud regularly.";
+    }
+
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(220);
+    doc.roundedRect(margin, currentY, contentWidth, 35, 4, 4);
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Professional Advice", margin + 10, currentY + 10);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+
+    const splitAdvice = doc.splitTextToSize(advice, contentWidth - 20);
+    doc.text(splitAdvice, margin + 10, currentY + 20);
+
+    currentY += 50;
+
+    autoTable(doc, {
+      startY: currentY,
+      margin: { left: margin, right: margin },
+      head: [["#", "Question", "Score", "Feedback"]],
+      body: questionWiseScore.map((question, index) => [
+        `${index + 1}`,
+        question.question,
+        `${question.score}/10`,
+        question.feedback,
+      ]),
+      styles: {
+        fontSize: 9,
+        cellPadding: 5,
+        valign: "top",
+      },
+      headStyles: {
+        fillColor: [34, 197, 94],
+        textColor: 255,
+        halign: "center",
+      },
+      columnStyles: {
+        0: { cellWidth: 10, halign: "center" },
+        1: { cellWidth: 55 },
+        2: { cellWidth: 20, halign: "center" },
+        3: { cellWidth: "auto" },
+      },
+      alternateRowStyles: {
+        fillColor: [249, 250, 251],
+      },
+    });
+
+    doc.save("AI_Interview_Report.pdf");
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50 px-4 sm:px-6 lg:px-10 py-8">
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="w-full flex items-start gap-4 flex-wrap">
+        <div className="md:mb-10 w-full flex items-start gap-4 flex-wrap">
           <button
             onClick={() => navigate("/history")}
             className="mt-1 p-3 rounded-full bg-white shadow hover:shadow-md transition"
@@ -61,6 +297,13 @@ function Step3Report({ report }) {
             </p>
           </div>
         </div>
+
+        <button
+          onClick={downloadPDF}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl shadow-md transition-all duration-300 font-semibold text-sm sm:text-base text-nowrap"
+        >
+          Download PDF
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
@@ -68,52 +311,59 @@ function Step3Report({ report }) {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="bg-white rounded-3xl shadow-lg p-8 text-center"
+            className="bg-white rounded-2xl sm:rounded-3xl shadow-lg p-6 sm:p-8 text-center"
           >
-            <h3 className="text-gray-500 mb-6">Overall Performance</h3>
-
-            <div
-              className="w-28 h-28 rounded-full mx-auto flex items-center justify-center"
-              style={{
-                background: `conic-gradient(#10b981 ${percentage}%, #e5e7eb ${percentage}%)`,
-              }}
-            >
-              <div className="w-22 h-22 rounded-full bg-white flex items-center justify-center">
-                <span className="text-2xl font-bold text-red-500">
-                  {Number(finalScore).toFixed(1)}/10
-                </span>
-              </div>
+            <h3 className="text-gray-500 mb-4 sm:mb-6 text-sm sm:text-base">
+              Overall Performance
+            </h3>
+            <div className="relative w-20 h-20 sm:w-25 sm:h-25 mx-auto">
+              <CircularProgressbar
+                value={percentage}
+                text={`${score}/10`}
+                styles={buildStyles({
+                  textSize: "18px",
+                  pathColor: "#10b981",
+                  textColor: "#ef4444",
+                  trailColor: "#e5e7eb",
+                })}
+              />
             </div>
 
-            <div className="mt-5">
-              <p className="font-semibold text-gray-800">{performanceText}</p>
-              <p className="text-gray-500 text-sm mt-1">{shortTagline}</p>
+            <p className="text-gray-400 mt-3 text-xs sm:text-sm">Out of 10</p>
+
+            <div className="mt-4">
+              <p className="font-semibold text-gray-800 text-sm sm:text-base">
+                {performanceText}
+              </p>
+              <p className="text-gray-500 text-xs sm:text-sm mt-1">
+                {shortTagline}
+              </p>
             </div>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="bg-white rounded-3xl shadow-lg p-8"
+            className="bg-white rounded-2xl sm:rounded-3xl shadow-lg p-6 sm:p-8"
           >
-            <h3 className="text-lg font-semibold text-gray-700 mb-6">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-700 mb-6">
               Skill Evaluation
             </h3>
 
             <div className="space-y-5">
               {skills.map((skill) => (
                 <div key={skill.label}>
-                  <div className="flex justify-between mb-2">
+                  <div className="flex justify-between mb-2 text-sm sm:text-base">
                     <span>{skill.label}</span>
                     <span className="font-semibold text-green-600">
                       {skill.value}
                     </span>
                   </div>
 
-                  <div className="bg-gray-200 h-3 rounded-full">
+                  <div className="bg-gray-200 h-2 sm:h-3 rounded-full">
                     <div
                       className="bg-green-500 h-full rounded-full"
-                      style={{ width: `${Math.min(skill.value * 10, 100)}%` }}
+                      style={{ width: `${skill.value * 10}%` }}
                     />
                   </div>
                 </div>
@@ -126,63 +376,44 @@ function Step3Report({ report }) {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="bg-white rounded-3xl shadow-lg p-8"
+            className="bg-white rounded-2xl sm:rounded-3xl shadow-lg p-5 sm:p-8"
           >
-            <h3 className="text-lg font-semibold text-gray-700 mb-6">
-              Question Scores
+            <h3 className="text-base sm:text-lg font-semibold text-gray-700 mb-4 sm:mb-6">
+              Performance Trend
             </h3>
 
-            <div className="space-y-4">
-              {questionWiseScore.map((question, index) => (
-                <div key={index}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-500">
-                      Question {index + 1}
-                    </span>
-                    <span className="font-semibold text-emerald-600">
-                      {question.score || 0}/10
-                    </span>
-                  </div>
-                  <div className="h-3 bg-gray-200 rounded-full">
-                    <div
-                      className="h-full bg-emerald-500 rounded-full"
-                      style={{
-                        width: `${Math.min((question.score || 0) * 10, 100)}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
+            <div className="h-64 sm:h-72">
+              <PerformanceTrendChart data={questionScoreData} />
             </div>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="bg-white rounded-3xl shadow-lg p-8"
+            className="bg-white rounded-2xl sm:rounded-3xl shadow-lg p-5 sm:p-8"
           >
-            <h3 className="text-lg font-semibold text-gray-700 mb-6">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-700 mb-6">
               Question Breakdown
             </h3>
-
             <div className="space-y-6">
               {questionWiseScore.map((question, index) => (
                 <div
                   key={index}
-                  className="bg-gray-50 p-5 rounded-2xl border border-gray-200"
+                  className="bg-gray-50 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-200"
                 >
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-4">
                     <div>
                       <p className="text-xs text-gray-400">
                         Question {index + 1}
                       </p>
-                      <p className="font-semibold text-gray-800 leading-relaxed">
+
+                      <p className="font-semibold text-gray-800 text-sm sm:text-base leading-relaxed">
                         {question.question || "Question not available"}
                       </p>
                     </div>
 
-                    <div className="bg-green-100 text-green-600 px-3 py-1 rounded-full font-bold text-sm w-fit">
-                      {question.score || 0}/10
+                    <div className="bg-green-100 text-green-600 px-3 py-1 rounded-full font-bold text-xs sm:text-sm w-fit">
+                      {question.score ?? 0}/10
                     </div>
                   </div>
 
