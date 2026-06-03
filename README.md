@@ -1,4 +1,6 @@
-# InterviewIQ Clone
+![ai-iq Banner](ai-iq-image.png)
+
+# InterviewIQ 
 
 Full-stack AI mock interview platform built with React, Express, MongoDB, Firebase Google Auth, OpenRouter, and Razorpay.
 
