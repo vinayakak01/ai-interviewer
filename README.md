@@ -1,6 +1,10 @@
+# InterviewIQ 
+
+### ✨ Live 
+**[Click here to try InterviewIQ Live ](https://ai-interviewer-1-cjug.onrender.com/)**
+
 ![ai-iq Banner](ai-iq-image.png)
 
-# InterviewIQ 
 
 Full-stack AI mock interview platform built with React, Express, MongoDB, Firebase Google Auth, OpenRouter, and Razorpay.
 
