@@ -22,14 +22,6 @@ function Footer() {
         { label: "Analytics", to: "/history", icon: <BsBarChart size={14} /> },
       ],
     },
-    {
-      title: "Company",
-      links: [
-        { label: "About", to: "/" },
-        { label: "Contact", to: "/" },
-        { label: "Support", to: "/" },
-      ],
-    },
   ];
 
   return (
@@ -93,7 +85,17 @@ function Footer() {
 
         <div className="flex flex-col gap-2 border-t border-gray-200 py-4 text-sm text-gray-500 md:flex-row md:items-center md:justify-between">
           <p>Built for mock interviews, feedback loops, and steady improvement.</p>
-          <p>InterviewIQ.AI © 2026</p>
+           <p>
+            InterviewIQ.AI © 2026 · Made by{" "}
+            <a
+              href='https://github.com/vinayakak01'
+              target='_blank'
+              rel='noreferrer'
+              className='text-black hover:text-green-600 transition'
+            >
+              vinayaka↗
+            </a>
+          </p>
         </div>
       </div>
     </footer>
